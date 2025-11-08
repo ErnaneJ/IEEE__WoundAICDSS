@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
 load_dotenv(override=True, verbose=True)
 
 def get_gemini_client():
@@ -22,15 +21,6 @@ def get_gemini_client():
         raise ImportError("Biblioteca google-genai não instalada. Execute: pip install google-genai")
 
 def generate_chat_introduction(paciente_data):
-    """
-    Gera uma mensagem de introdução para o chat baseada nos dados do paciente
-    
-    Args:
-        paciente_data: Dicionário com dados do paciente
-    
-    Returns:
-        str: Mensagem de introdução gerada pelo Gemini
-    """
     try:
         client = get_gemini_client()
         
@@ -66,7 +56,6 @@ def generate_chat_introduction(paciente_data):
         return response.text.strip()
         
     except Exception as e:
-        # Fallback em caso de erro
         print(f"❌ Erro ao gerar mensagem com Gemini: {e}")
         return f"""
         Olá! Eu sou um sistema de Inteligência Artificial de Suporte à Decisão Clínica (CDSS) especializado na triagem e classificação inicial de lesões de pele.

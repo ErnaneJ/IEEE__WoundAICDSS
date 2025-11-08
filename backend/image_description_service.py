@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True, verbose=True)
 
-# Métricas do nosso modelo (do seu CSV)
 METRICAS_MODELO = {
     'BG': {'precision': 0.9615, 'recall': 1.0, 'f1-score': 0.9804},
     'D': {'precision': 0.8293, 'recall': 0.7391, 'f1-score': 0.7816},
@@ -38,17 +37,14 @@ def describe_image_with_analysis(image_path: str, dados_analise: dict):
     try:
         client = get_gemini_client()
         
-        # Lê a imagem
         with open(image_path, "rb") as f:
             image_data = f.read()
         
-        # 🔥 CORREÇÃO: Usa as chaves corretas do resultado
         classe_predita = dados_analise.get('classe_predita', 'Desconhecida')
         classe_traduzida = dados_analise.get('classe_traduzida', 'Desconhecida')
         confianca = dados_analise.get('confianca_predita_percentual', 'N/A')
         probabilidades = dados_analise.get('probabilidades_completas', {})
         
-        # Prepara o prompt técnico
         prompt = f"""
         Você é um sistema de Inteligência Artificial de Suporte à Decisão Clínica (CDSS) especializado na triagem e classificação inicial de lesões de pele. Seu objetivo é gerar um PRÉ-LAUDO TÉCNICO e um RELATÓRIO DE RISCO conciso, com linguagem estritamente médica, para ser lido e validado por um médico especialista.
 
@@ -87,7 +83,6 @@ def describe_image_with_analysis(image_path: str, dados_analise: dict):
         
     except Exception as e:
         print(f"❌ Erro ao gerar descrição da imagem: {e}")
-        # Fallback com informações básicas
         return f"""
         **PRÉ-LAUDO TÉCNICO - IMAGEM CLASSIFICADA**
 

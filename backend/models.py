@@ -19,7 +19,6 @@ class Paciente(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Use strings para lazy loading
     chats = relationship("Chat", back_populates="paciente", lazy="select")
     reports = relationship("ReportPDF", back_populates="paciente", lazy="select")
 

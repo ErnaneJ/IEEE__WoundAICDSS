@@ -4,7 +4,6 @@ import traceback
 from celery import current_task
 from .celery_app import celery_app
 
-# Adiciona o backend ao path
 sys.path.append('/app/backend')
 
 def classificar_imagem_batch():
@@ -19,7 +18,6 @@ def classificar_imagem_batch():
         db = SessionLocal()
         
         try:
-            # Pega imagens pendentes
             imagens = db.query(Image).filter(Image.classification == "Pendente").all()
             print(f"📊 {len(imagens)} imagens pendentes")
             
@@ -28,11 +26,9 @@ def classificar_imagem_batch():
                 print(f"\n--- [{i}/{len(imagens)}] {img.filename} ---")
                 
                 try:
-                    # CORREÇÃO: Usa caminho absoluto
                     image_path = img.image_path
                     print(f"📂 Caminho relativo: {image_path}")
                     
-                    # Se o caminho for relativo, converte para absoluto
                     if not image_path.startswith('/'):
                         image_path = f"/app/{image_path}"
                     
@@ -40,7 +36,6 @@ def classificar_imagem_batch():
                     
                     if not os.path.exists(image_path):
                         print(f"❌ Arquivo não existe em: {image_path}")
-                        # Atualiza status para ERROR
                         img.classification = "ERROR"
                         img.description = "Arquivo não encontrado"
                         db.commit()
@@ -52,11 +47,9 @@ def classificar_imagem_batch():
                         })
                         continue
                     
-                    # Classifica
                     resultado = classificar_imagem(image_path)
                     
                     if resultado:
-                        # Atualiza banco com sucesso
                         img.classification = resultado['classe']
                         img.description = f"{resultado['classe_traduzida']} ({resultado['confianca']})"
                         db.commit()
@@ -70,7 +63,6 @@ def classificar_imagem_batch():
                             'confidence': resultado['confianca']
                         })
                     else:
-                        # Classificação falhou
                         print(f"❌ Falha na classificação")
                         img.classification = "ERROR"
                         img.description = "Falha na classificação da imagem"
@@ -83,14 +75,12 @@ def classificar_imagem_batch():
                         })
                         
                 except Exception as img_error:
-                    # Erro específico no processamento desta imagem
                     error_msg = f"Erro no processamento: {str(img_error)}"
                     print(f"💥 ERRO na imagem {img.filename}: {error_msg}")
                     print(traceback.format_exc())
                     
-                    # Atualiza status para ERROR
                     img.classification = "ERROR"
-                    img.description = error_msg[:255]  # Limita o tamanho
+                    img.description = error_msg[:255]
                     db.commit()
                     resultados.append({
                         'image_id': img.id,
@@ -112,7 +102,6 @@ def classificar_imagem_batch():
             }
             
         except Exception as e:
-            # Erro geral no processamento do batch
             error_msg = f"Erro geral no processamento: {str(e)}"
             print(f"💥 ERRO GERAL: {error_msg}")
             print(traceback.format_exc())
@@ -125,7 +114,6 @@ def classificar_imagem_batch():
             db.close()
             
     except ImportError as e:
-        # Erro de importação (problema de configuração)
         error_msg = f"Erro de importação: {str(e)}"
         print(f"💥 ERRO DE IMPORT: {error_msg}")
         print(traceback.format_exc())
@@ -152,7 +140,6 @@ def classificar_imagem_individual(self, image_id):
         db = SessionLocal()
         
         try:
-            # Busca a imagem específica
             img = db.query(Image).filter(Image.id == image_id).first()
             if not img:
                 return {
@@ -162,7 +149,6 @@ def classificar_imagem_individual(self, image_id):
             
             print(f"🎯 Processando imagem individual: {img.filename} (ID: {image_id})")
             
-            # CORREÇÃO: Usa caminho absoluto
             image_path = img.image_path
             if not image_path.startswith('/'):
                 image_path = f"/app/{image_path}"
@@ -204,7 +190,6 @@ Imagem classificada como {resultado['classe_traduzida']} com uma probabilidade d
                     
                 except Exception as desc_error:
                     print(f"⚠️  Erro ao gerar descrição técnica: {desc_error}")
-                    # Cria mensagem básica em caso de erro
                     mensagem_chat = ChatMessage(
                         chat_id=img.chat_id,
                         content=f"""
@@ -231,7 +216,6 @@ $$IMAGE:{os.path.basename(image_path).split('.')[0]}$$
                     'technical_analysis_created': True
                 }
             else:
-                # Se houve erro na classificação
                 error_msg = resultado.get('mensagem', 'Falha na classificação da imagem')
                 img.classification = "ERROR"
                 img.description = error_msg

@@ -3,8 +3,8 @@ import os
 
 celery_app = Celery(
     'worker',
-    broker='redis://redis:6379/0',  # URL direta
-    backend='redis://redis:6379/0',  # URL direta
+    broker='redis://redis:6379/0',
+    backend='redis://redis:6379/0',
     include=['app.tasks']
 )
 

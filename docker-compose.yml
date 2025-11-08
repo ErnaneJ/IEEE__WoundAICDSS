@@ -40,6 +40,7 @@ services:
       - ./backend:/app/backend
       - ./bucket:/app/bucket
       - ./bucket/images:/app/bucket/images
+      - ./bucket/reports:/app/bucket/reports
       - ./backend/models:/app/backend/models
       - ./.env:/app/.env
     networks:
@@ -63,6 +64,7 @@ services:
       - ./backend:/app/backend
       - ./bucket:/app/bucket
       - ./bucket/images:/app/bucket/images
+      - ./bucket/reports:/app/bucket/reports
       - ./backend/models:/app/backend/models
       - ./.env:/app/.env
     networks:

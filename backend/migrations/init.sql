@@ -1,6 +1,3 @@
--- Este arquivo será executado automaticamente quando o PostgreSQL iniciar
--- Garantindo que as tabelas existam
-
 CREATE TABLE IF NOT EXISTS pacientes (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -50,7 +47,6 @@ CREATE TABLE IF NOT EXISTS report_pdfs (
     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_pacientes_documento ON pacientes(documento); 
 CREATE INDEX IF NOT EXISTS idx_chats_paciente_id ON chats(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_chat_id ON chat_messages(chat_id);

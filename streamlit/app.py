@@ -58,12 +58,10 @@ def render_message_with_images(message_content: str, container, streaming=False)
     
     try:
         cursor = 0
-        # Encontra todos os placeholders de imagem
         for match in re.finditer(r"@@IMAGE:([a-f0-9]+)@@", message_content):
             start, end = match.span()
             image_hash = match.group(1)
 
-            # Renderiza texto antes da imagem
             before_text = message_content[cursor:start].strip()
             if before_text:
                 if streaming:
@@ -71,9 +69,7 @@ def render_message_with_images(message_content: str, container, streaming=False)
                 else:
                     container.write(before_text)
 
-            # Renderiza a imagem
             try:
-                # Busca imagem pelo hash no nome do arquivo
                 image = db.query(Image).filter(Image.image_path.like(f'%{image_hash}%')).first()
                 if image and os.path.exists(image.image_path):
                     pil_image = PILImage.open(image.image_path)
@@ -134,7 +130,6 @@ def show_patient_form():
             historico_medico = st.text_area("Histórico Médico", placeholder="Doenças pré-existentes, cirurgias, etc.")
 
         with st.expander("📸 Imagens das Lesões", expanded=False):
-            # Upload por arquivo
             uploaded_files = st.file_uploader(
                 "Selecione imagens das lesões",
                 type=['jpg', 'jpeg', 'png'],
@@ -142,7 +137,6 @@ def show_patient_form():
                 help="Faça upload das imagens das lesões por pressão"
             )
         
-            # Upload por câmera
             st.write("**Ou tire uma foto:**")
             _, cameraInput, _ = st.columns([1, 1, 1])
             camera_image = cameraInput.camera_input("Câmera Integrada", width=1080)
@@ -230,8 +224,28 @@ def show_chat_view(patient_id):
             time.sleep(3)
             st.rerun()
         
-        # if st.button("📊 Relatório", type="primary", width='stretch'):
-        #     st.info("📋 Funcionalidade de relatório em desenvolvimento")
+        if st.button("📄 Gerar Pré-Laudo PDF", type="primary", width='stretch', use_container_width=True):
+            with st.spinner("Gerando relatório PDF..."):
+                try:
+                    from backend.database_operations import generate_pdf_report
+                    pdf_path = generate_pdf_report(db, paciente.id)
+                    
+                    with open(pdf_path, "rb") as pdf_file:
+                        pdf_bytes = pdf_file.read()
+                    
+                    st.success("✅ Relatório gerado com sucesso!")
+                    st.download_button(
+                        label="📥 Download do Pré-Laudo PDF",
+                        data=pdf_bytes,
+                        file_name=f"pre_laudo_{paciente.nome}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True
+                    )
+                    
+                except Exception as e:
+                    st.error(f"❌ Erro ao gerar PDF: {str(e)}")
+        
             
         st.divider()
 
@@ -367,7 +381,6 @@ def show_chat_view(patient_id):
 def main():
     init_session_state()
     
-    # Verifica se tem patient_id na query string
     query_params = st.query_params
     patient_id = query_params.get("patient_id", [None])[0]
     
@@ -375,7 +388,6 @@ def main():
         show_chat_view(int(patient_id))
         return
     
-    # Página principal - Lista de pacientes
     st.markdown(
         """
         <div style="text-align: center;">
@@ -387,11 +399,9 @@ def main():
         unsafe_allow_html=True
     )
     
-    # Mostrar formulário ou listagem
     if st.session_state.show_form:
         show_patient_form()
     else:
-        # Barra de busca e botão novo
         col1, col2 = st.columns([3, 1])
         
         with col1:
@@ -414,7 +424,6 @@ def main():
             if pacientes:
                 st.subheader(f"📋 Pacientes ({len(pacientes)})")
                 
-                # Cria dataframe com link para o chat
                 df_data = []
                 for p in pacientes:
                     chat = db.query(Chat).filter(Chat.paciente_id == p.id).first()
@@ -437,7 +446,6 @@ def main():
                 
                 df = pd.DataFrame(df_data)
                 
-                # Configura o dataframe para ter links clicáveis
                 st.dataframe(
                     df,
                     width='stretch',

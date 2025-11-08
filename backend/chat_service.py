@@ -26,7 +26,6 @@ def build_system_prompt(paciente: Paciente, images: List[Image]) -> str:
     """
     Constrói o prompt do sistema com base nos dados do paciente e imagens
     """
-    # Informações básicas do paciente
     paciente_info = f"""
     DADOS DO PACIENTE:
     - Nome: {paciente.nome}
@@ -38,7 +37,6 @@ def build_system_prompt(paciente: Paciente, images: List[Image]) -> str:
     - Alergias: {paciente.alergias or 'Nenhuma informada'}
     """
 
-    # Informações das imagens classificadas
     images_info = ""
     if images:
         images_info = "\nIMAGENS CLASSIFICADAS:\n"
@@ -90,7 +88,6 @@ def build_conversation_context(messages: List[ChatMessage], max_messages: int = 
     """
     Constrói o contexto da conversa em formato de texto
     """
-    # Pega as últimas N mensagens para manter o contexto
     recent_messages = messages[-max_messages:] if len(messages) > max_messages else messages
     
     conversation_context = "\nHISTÓRICO RECENTE DA CONVERSA:\n"
@@ -122,19 +119,14 @@ def generate_chat_response(
         if not paciente:
             raise ValueError("Paciente não encontrado")
         
-        # Busca imagens do chat
         images = db.query(Image).filter(Image.chat_id == chat_id).all()
         
-        # Busca histórico de mensagens
         messages = db.query(ChatMessage).filter(ChatMessage.chat_id == chat_id).order_by(ChatMessage.created_at).all()
         
-        # Constrói o prompt do sistema
         system_prompt = build_system_prompt(paciente, images)
         
-        # Constrói o contexto da conversa
         conversation_context = build_conversation_context(messages)
         
-        # Prepara o prompt completo
         full_prompt = f"""
         {system_prompt}
         
@@ -145,7 +137,6 @@ def generate_chat_response(
         Por favor, responda de forma útil e apropriada ao contexto médico acima.
         """
         
-        # Gera a resposta usando a sintaxe correta do google-genai
         response = client.models.generate_content(
             model='gemini-2.0-flash-exp',
             contents=full_prompt
@@ -156,7 +147,6 @@ def generate_chat_response(
     except Exception as e:
         print(f"❌ Erro ao gerar resposta do chat: {e}")
         
-        # Busca dados para o fallback
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         paciente = db.query(Paciente).filter(Paciente.id == chat.paciente_id).first() if chat else None
         
@@ -164,7 +154,6 @@ def generate_chat_response(
         paciente_idade = f"{paciente.idade} anos" if paciente else "idade não informada"
         paciente_diabetes = paciente.diabetes_tipo if paciente else "tipo não informado"
         
-        # Fallback para manter a funcionalidade
         return f"""
         Olá! Sou seu assistente para análise de lesões.
 

@@ -8,26 +8,26 @@ load_dotenv(override=True, verbose=True)
 
 def get_gemini_client():
     """
-    Retorna o cliente do Gemini
+    Return the gemini client
     """
     try:
         from google import genai
         
         api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("GEMINI_API_KEY não encontrada")
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
         
         client = genai.Client(api_key=api_key)
         return client
     except ImportError:
-        raise ImportError("Biblioteca google-genai não instalada")
+        raise ImportError("Biblioteca google-genai not installed. Please install it with 'pip install google-genai'.")
 
 def build_system_prompt(paciente: Paciente, images: List[Image]) -> str:
     """
-    Constrói o prompt do sistema com base nos dados do paciente e imagens
+    Builds a detailed system prompt for the Gemini model based on the patient's data and classified images.
     """
     paciente_info = f"""
-    DADOS DO PACIENTE:
+    PATIENT INFORMATION:
     - Name: {paciente.nome}
     - Age: {paciente.idade} years old
     - Sex: {paciente.sexo}
@@ -41,7 +41,7 @@ def build_system_prompt(paciente: Paciente, images: List[Image]) -> str:
     if images:
         images_info = "\nCLASSIFIED IMAGES:\n"
         for img in images:
-            if img.classification != "Pendente":
+            if img.classification != "Pending":
                 images_info += f"- {img.filename}: {img.classification} - {img.description}\n"
     
     system_prompt = f"""
@@ -91,7 +91,7 @@ def build_system_prompt(paciente: Paciente, images: List[Image]) -> str:
 
 def build_conversation_context(messages: List[ChatMessage], max_messages: int = 10) -> str:
     """
-    Constrói o contexto da conversa em formato de texto
+    Builds a conversation context string from the recent chat messages, limited to a maximum number of messages to avoid overwhelming the model.
     """
     recent_messages = messages[-max_messages:] if len(messages) > max_messages else messages
     
@@ -109,12 +109,11 @@ def generate_chat_response(
     user_message: str
 ) -> str:
     """
-    Gera uma resposta do Gemini baseada no histórico e contexto do paciente
+    Generates a response from the Gemini model based on the chat history and patient context.
     """
     try:
         client = get_gemini_client()
         
-        # Busca dados do chat e paciente
         from .models import Chat
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if not chat:

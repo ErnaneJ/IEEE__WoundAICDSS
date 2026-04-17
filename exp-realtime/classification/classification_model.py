@@ -7,24 +7,24 @@ from tensorflow.keras.applications import VGG16
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 
-MODELO_H5_PATH = '/Users/ernane/me/diabetes-lesion-analysis/backend/models/best_wound_classifier_FINETUNED.h5'
-METRICAS_CSV_PATH = '/Users/ernane/me/diabetes-lesion-analysis/backend/models/wound_metrics_report_FINETUNED.csv'
+MODEL_H5_PATH = '/Users/ernane/me/diabetes-lesion-analysis/backend/models/best_wound_classifier_FINETUNED.h5'
+METRICS_CSV_PATH = '/Users/ernane/me/diabetes-lesion-analysis/backend/models/wound_metrics_report_FINETUNED.csv'
 
 CLASSES = ['BG', 'D', 'N', 'P', 'S', 'V']
 IMG_SIZE = (224, 224)
 
-MODELO = None
-METRICAS_DF = None
+MODEL = None
+METRICS_DF = None
 
 def carregar_recursos():
     """Carrega modelo e métricas"""
-    global MODELO, METRICAS_DF
+    global MODEL, METRICS_DF
     
-    if MODELO is not None:
+    if MODEL is not None:
         return True
 
     try:
-        print("📦 Carregando modelo...")
+        print("📦 Loading Model...")
         
         base_model = VGG16(weights=None, include_top=False, input_shape=(224, 224, 3))
         for layer in base_model.layers:
@@ -36,22 +36,22 @@ def carregar_recursos():
         x = Dense(256, activation='relu')(x)
         x = Dropout(0.5)(x)
         predictions = Dense(len(CLASSES), activation='softmax')(x)
-        MODELO = Model(inputs=base_model.input, outputs=predictions)
+        MODEL = Model(inputs=base_model.input, outputs=predictions)
         
-        MODELO.load_weights(MODELO_H5_PATH)
-        print("✅ Modelo carregado")
+        MODEL.load_weights(MODEL_H5_PATH)
+        print("✅ Model loaded")
         
-        METRICAS_DF = pd.read_csv(METRICAS_CSV_PATH, index_col=0)
-        print("✅ Métricas carregadas")
+        METRICS_DF = pd.read_csv(METRICS_CSV_PATH, index_col=0)
+        print("✅ Metrics loaded")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao carregar recursos: {e}")
+        print(f"❌ Error loading resources: {e}")
         return False
 
 def traduzir_classe(classe):
-    traducoes = {
+    translators = {
         'BG': 'Background',
         'D': 'Diabetic Ulcer', 
         'N': 'Normal Skin',
@@ -59,54 +59,53 @@ def traduzir_classe(classe):
         'S': 'Surgical Wound',
         'V': 'Venous Ulcer'
     }
-    return traducoes.get(classe, classe)
+    return translators.get(classe, classe)
 
 def classificar_imagem(image_path: str) -> dict:
     """
-    Classifica uma imagem e retorna um dicionário estruturado com 
-    probabilidades e métricas de risco para o LLM.
+    Classification of the image using the fine-tuned VGG16 model. Returns a dictionary with the predicted class, confidence
     """
     if not carregar_recursos():
-        return {"status": "erro", "mensagem": "Falha ao carregar modelo ou métricas."}
+        return {"status": "erro", "message": "Failed to load model or metrics."}
     
     try:
-        print(f"🔍 Processando: {os.path.basename(image_path)}")
+        print(f"🔍 Processing: {os.path.basename(image_path)}")
         
         img = Image.open(image_path).convert('RGB')
         img = img.resize(IMG_SIZE)
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
         
-        predictions = MODELO.predict(img_array, verbose=0)[0] # Vetor de 6 probabilidades
+        predictions = MODEL.predict(img_array, verbose=0)[0] # Get the first (and only) prediction
         
         class_idx = np.argmax(predictions)
-        classe_predita = CLASSES[class_idx]
-        confianca_predita = float(predictions[class_idx])
+        predicted_class = CLASSES[class_idx]
+        predicted_confidence = float(predictions[class_idx])
         
-        probabilidades = {c: f"{p*100:.2f}%" for c, p in zip(CLASSES, predictions)}
+        odds = {c: f"{p*100:.2f}%" for c, p in zip(CLASSES, predictions)}
         
-        recall_p = float(METRICAS_DF.loc['P', 'recall'])
+        recall_p = float(METRICS_DF.loc['P', 'recall'])
         
-        top_classes = np.argsort(predictions)[::-1] # Índices em ordem decrescente
+        top_classes = np.argsort(predictions)[::-1] # Indexes of classes sorted by confidence
         top_3_classes = [CLASSES[i] for i in top_classes[:3]]
         
         dados_analise = {
-            "status": "sucesso",
-            "classe_predita": classe_predita,
-            "confianca_predita_percentual": f"{confianca_predita*100:.2f}%",
-            "classe_traduzida": traduzir_classe(classe_predita),
-            "probabilidades_completas": probabilidades,
+            "status": "success",
+            "predicted_class": predicted_class,
+            "predicted_percentage_confidence": f"{predicted_confidence*100:.2f}%",
+            "translated_class": traduzir_classe(predicted_class),
+            "complete_probabilities": odds,
             "top_3_classes": top_3_classes,
-            "metrica_f1_classe_predita": float(METRICAS_DF.loc[classe_predita, 'f1-score']),
-            "risco_p": {
+            "metric_f1_predicted_class": float(METRICS_DF.loc[predicted_class, 'f1-score']),
+            "risk_p": {
                 "Recall_P": recall_p,
-                "Aviso_P": f"Recall histórico ({recall_p:.2f}) para Úlcera por Pressão é baixo. Cautela é necessária."
+                "Warning_P": f"Recall histórico ({recall_p:.2f}) para Úlcera por Pressão é baixo. Cautela é necessária."
             }
         }
         
-        print(f"✅ Resultado: {dados_analise['classe_predita']} ({dados_analise['confianca_predita_percentual']})")
+        print(f"✅ Result: {dados_analise['predicted_class']} ({dados_analise['predicted_percentage_confidence']})")
         return dados_analise
         
     except Exception as e:
-        print(f"❌ Erro na classificação: {e}")
-        return {"status": "erro", "mensagem": str(e)}
+        print(f"❌ Error in classification: {e}")
+        return {"status": "error", "message": str(e)}

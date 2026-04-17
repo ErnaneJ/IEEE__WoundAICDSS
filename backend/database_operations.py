@@ -7,7 +7,7 @@ from .gemini_service import generate_chat_introduction
 from datetime import datetime
 
 def classify_all_images_in_chat(db: Session, chat_id: int):
-    """Classifica todas as imagens em um chat específico"""
+    """Classify all images associated with a chat using Celery tasks"""
     images = db.query(Image).filter(Image.chat_id == chat_id).all()
     
     celery_app = get_celery_app()
@@ -16,12 +16,12 @@ def classify_all_images_in_chat(db: Session, chat_id: int):
             'app.tasks.classificar_imagem_individual', 
             args=[img.id]
         )
-        print(f"✅ Task enviada para imagem {img.id}: {result.id}")
+        print(f"✅ Task sent for image {img.id}: {result.id}")
     
-    print(f"🎯 {len(images)} tasks enviadas para processamento")
+    print(f"🎯 {len(images)} tasks sent")
 
 def get_celery_app():
-    """Retorna uma instância configurada do Celery"""
+    """Return a configured Celery app instance"""
     from celery import Celery
     celery_app = Celery('worker')
     celery_app.conf.broker_url = 'redis://redis:6379/0'
@@ -29,7 +29,7 @@ def get_celery_app():
     return celery_app
 
 def save_image_to_bucket(image_data, filename):
-    """Salva imagem no bucket e retorna o hash e caminho"""
+    """Save image to bucket and return the hash and path"""
     image_hash = hashlib.sha256(image_data).hexdigest()
     
     file_extension = os.path.splitext(filename)[1] if '.' in filename else '.jpg'
@@ -43,11 +43,11 @@ def save_image_to_bucket(image_data, filename):
     return image_hash, file_path
 
 def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
-    """Cria paciente e chat associado"""
+    """Create patient and associated chat, then save images and send classification tasks"""
     if paciente_data.get('documento'):
         existing = db.query(Paciente).filter(Paciente.documento == paciente_data['documento']).first()
         if existing:
-            raise ValueError(f"Já existe um paciente com o documento {paciente_data['documento']}")
+            raise ValueError(f"Already exists a patient with document {paciente_data['documento']}")
     
     paciente = Paciente(
         nome=paciente_data['nome'],
@@ -87,13 +87,13 @@ def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
             message_type="text"
         )
         db.add(chat_message)
-        print(f"✅ Mensagem de introdução criada para o chat {chat.id}")
+        print(f"✅ Introduction message created for chat {chat.id}")
         
     except Exception as e:
-        print(f"⚠️  Não foi possível criar mensagem de introdução: {e}")
+        print(f"⚠️  Failed to create introduction message: {e}")
         chat_message = ChatMessage(
             chat_id=chat.id,
-            content=f"Olá! Sou seu assistente de análise de lesões por pressão. Paciente: {paciente.nome}, {paciente.idade} anos, Diabetes {paciente.diabetes_tipo}. Estou pronto para analisar as imagens das lesões.",
+            content=f"Hello! I am your pressure wound analysis assistant. Patient: {paciente.nome}, {paciente.idade} years old, Diabetes {paciente.diabetes_tipo}. I am ready to analyze the images of the lesions.",
             is_user=False,
             message_type="text"
         )
@@ -101,14 +101,14 @@ def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
     
     saved_images = []
     for img_data in images_data:
-        image_hash, file_path = save_image_to_bucket(img_data['data'], img_data['filename'])
+        _, file_path = save_image_to_bucket(img_data['data'], img_data['filename'])
         
         image = Image(
             chat_id=chat.id,
             image_path=file_path,
             filename=img_data['filename'],
             description="Waiting for analysis...",
-            classification="Pendente"
+            classification="Pending"
         )
         db.add(image)
         saved_images.append(image)
@@ -122,7 +122,7 @@ def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
             args=[img.id],
             queue='celery'
         )
-        print(f"✅ Task enviada para imagem {img.id}: {result.id}")
+        print(f"✅ Task sent for image {img.id}: {result.id}")
     
     celery_app.send_task(
         'app.tasks.inicializar_chat', 
@@ -130,16 +130,16 @@ def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
         queue='celery'
     )
     
-    print(f"🎯 {len(saved_images)} tasks enviadas para processamento")
+    print(f"🎯 {len(saved_images)} tasks sent for processing")
 
     return {
-        "paciente": paciente,
+        "patient": paciente,
         "chat": chat,
         "images": saved_images
     }
 
 def search_pacientes(db: Session, search_term: str = ""):
-    """Busca pacientes por nome ou documento"""
+    """search pacientes by name or document"""
     query = db.query(Paciente)
     
     if search_term:
@@ -151,36 +151,36 @@ def search_pacientes(db: Session, search_term: str = ""):
     return query.order_by(Paciente.created_at.desc()).all()
 
 def get_paciente_by_documento(db: Session, documento: str):
-    """Busca paciente por documento"""
+    """Search paciente by document"""
     return db.query(Paciente).filter(Paciente.documento == documento).first()
 
-def get_paciente_with_chat(db: Session, paciente_id: int):
-    """Retorna paciente com chat e informações relacionadas"""
+def get_paciente_with_chat(db: Session, patient_id: int):
+    """Return paciente with associated chat, images, and report"""
     try:
-        paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
-        if not paciente:
+        patient = db.query(Paciente).filter(Paciente.id == patient_id).first()
+        if not patient:
             return None
         
-        chat = db.query(Chat).filter(Chat.paciente_id == paciente_id).first()
+        chat = db.query(Chat).filter(Chat.paciente_id == patient_id).first()
         images = []
         report = None
         
         if chat:
             images = db.query(Image).filter(Image.chat_id == chat.id).all()
-            report = db.query(ReportPDF).filter(ReportPDF.paciente_id == paciente_id).first()
+            report = db.query(ReportPDF).filter(ReportPDF.paciente_id == patient_id).first()
         
         return {
-            "paciente": paciente,
+            "patient": patient,
             "chat": chat,
             "images": images,
             "report": report
         }
     except Exception as e:
-        print(f"❌ Erro em get_paciente_with_chat: {e}")
+        print(f"❌ Error in get_paciente_with_chat: {e}")
         raise
 
 def get_chat_status(chat):
-    """Retorna status do processamento do chat"""
+    """Return the status of a chat based on the classification status of its images"""
     if not chat:
         return "No Chat"
     
@@ -198,19 +198,19 @@ def get_chat_status(chat):
         return "Pending"
 
 def get_chat_images(db: Session, chat_id: int):
-    """Retorna imagens associadas a um chat"""
+    """Return images associated with a chat"""
     return db.query(Image).filter(Image.chat_id == chat_id).all()
 
 def add_images_to_chat(db: Session, chat_id: int, images_data: list):
-    """Adiciona novas imagens a um chat existente"""
+    """Add new images to an existing chat"""
     try:
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if not chat:
-            raise ValueError(f"Chat com ID {chat_id} não encontrado")
+            raise ValueError(f"Chat with ID {chat_id} not found")
         
         saved_images = []
         for img_data in images_data:
-            image_hash, file_path = save_image_to_bucket(img_data['data'], img_data['filename'])
+            _, file_path = save_image_to_bucket(img_data['data'], img_data['filename'])
             
             image = Image(
                 chat_id=chat_id,
@@ -230,9 +230,9 @@ def add_images_to_chat(db: Session, chat_id: int, images_data: list):
                 'app.tasks.classificar_imagem_individual', 
                 args=[img.id]
             )
-            print(f"✅ Nova task enviada para imagem {img.id}: {result.id}")
+            print(f"✅ New task sent for image {img.id}: {result.id}")
         
-        print(f"🎯 {len(saved_images)} nova(s) imagem(ns) enviada(s) para processamento")
+        print(f"🎯 {len(saved_images)} new image(s) sent for processing")
     
         return saved_images
         
@@ -241,7 +241,7 @@ def add_images_to_chat(db: Session, chat_id: int, images_data: list):
         raise e
     
 def generate_pdf_report(db: Session, paciente_id: int):
-    """Gera relatório PDF para o paciente"""
+    """Generate PDF report for a patient and save the report path in the database"""
     try:
         from .pdf_service import generate_report_for_patient
         pdf_path = generate_report_for_patient(db, paciente_id)
@@ -258,11 +258,11 @@ def generate_pdf_report(db: Session, paciente_id: int):
         return pdf_path
         
     except Exception as e:
-        print(f"❌ Erro ao gerar relatório PDF: {e}")
+        print(f"❌ Error generating PDF report: {e}")
         raise
 
 def get_pdf_report(db: Session, paciente_id: int):
-    """Busca relatório PDF mais recente do paciente"""
+    """Fetch the most recent PDF report for the patient"""
     from .models import ReportPDF
     report = db.query(ReportPDF).filter(
         ReportPDF.paciente_id == paciente_id

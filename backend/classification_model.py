@@ -7,20 +7,20 @@ from tensorflow.keras.applications import VGG16
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 
-MODELO_H5_PATH = '/app/backend/models/best_wound_classifier_FINETUNED.h5'
-METRICAS_CSV_PATH = '/app/backend/models/wound_metrics_report_FINETUNED.csv'
+MODEL_H5_PATH = '/app/backend/models/best_wound_classifier_FINETUNED.h5'
+METRICS_CSV_PATH = '/app/backend/models/wound_metrics_report_FINETUNED.csv'
 
 CLASSES = ['BG', 'D', 'N', 'P', 'S', 'V']
 IMG_SIZE = (224, 224)
 
-MODELO = None
-METRICAS_DF = None
+MODEL = None
+METRICS_DF = None
 
 def carregar_recursos():
-    """Carrega modelo e métricas"""
-    global MODELO, METRICAS_DF
+    """Load the model and metrics if they are not already loaded."""
+    global MODEL, METRICS_DF
     
-    if MODELO is not None:
+    if MODEL is not None:
         return True
 
     try:
@@ -36,12 +36,12 @@ def carregar_recursos():
         x = Dense(256, activation='relu')(x)
         x = Dropout(0.5)(x)
         predictions = Dense(len(CLASSES), activation='softmax')(x)
-        MODELO = Model(inputs=base_model.input, outputs=predictions)
+        MODEL = Model(inputs=base_model.input, outputs=predictions)
         
-        MODELO.load_weights(MODELO_H5_PATH)
-        print("✅ Modelo carregado")
+        MODEL.load_weights(MODEL_H5_PATH)
+        print("✅ Model loaded")
         
-        METRICAS_DF = pd.read_csv(METRICAS_CSV_PATH, index_col=0)
+        METRICS_DF = pd.read_csv(METRICS_CSV_PATH, index_col=0)
         print("✅ Metrics loaded")
         
         return True
@@ -63,11 +63,10 @@ def traduzir_classe(classe):
 
 def classificar_imagem(image_path: str) -> dict:
     """
-    Classifica uma imagem e retorna um dicionário estruturado com 
-    probabilidades e métricas de risco para o LLM.
+    Classifies a wound image using the pre-trained model and returns the predicted class, confidence, and relevant metrics.
     """
     if not carregar_recursos():
-        return {"status": "erro", "mensagem": "Failed to load model or metrics."}
+        return {"status": "erro", "message": "Failed to load model or metrics."}
     
     try:
         print(f"🔍 Processing: {os.path.basename(image_path)}")
@@ -77,36 +76,36 @@ def classificar_imagem(image_path: str) -> dict:
         img_array = np.array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
         
-        predictions = MODELO.predict(img_array, verbose=0)[0] # Vetor de 6 probabilidades
+        predictions = MODEL.predict(img_array, verbose=0)[0] # Get the first (and only) prediction
         
         class_idx = np.argmax(predictions)
-        classe_predita = CLASSES[class_idx]
+        predicted_class = CLASSES[class_idx]
         confianca_predita = float(predictions[class_idx])
         
         probabilidades = {c: f"{p*100:.2f}%" for c, p in zip(CLASSES, predictions)}
         
-        recall_p = float(METRICAS_DF.loc['P', 'recall'])
+        recall_p = float(METRICS_DF.loc['P', 'recall'])
         
         top_classes = np.argsort(predictions)[::-1]
         top_3_classes = [CLASSES[i] for i in top_classes[:3]]
         
         dados_analise = {
-            "status": "sucesso",
-            "classe_predita": classe_predita,
-            "confianca_predita_percentual": f"{confianca_predita*100:.2f}%",
-            "classe_traduzida": traduzir_classe(classe_predita),
-            "probabilidades_completas": probabilidades,
+            "status": "success",
+            "predicted_class": predicted_class,
+            "predicted_percentage_confidence": f"{confianca_predita*100:.2f}%",
+            "translated_class": traduzir_classe(predicted_class),
+            "complete_probabilities": probabilidades,
             "top_3_classes": top_3_classes,
-            "metrica_f1_classe_predita": float(METRICAS_DF.loc[classe_predita, 'f1-score']),
-            "risco_p": {
+            "metric_f1_predicted_class": float(METRICS_DF.loc[predicted_class, 'f1-score']),
+            "risk_p": {
                 "Recall_P": recall_p,
-                "Aviso_P": f"Historical recall ({recall_p:.2f}) for Pressure Ulcer is low. Caution is advised."
+                "Warning_P": f"Historical recall ({recall_p:.2f}) for Pressure Ulcer is low. Caution is advised."
             }
         }
         
-        print(f"✅ Result: {dados_analise['classe_predita']} ({dados_analise['confianca_predita_percentual']})")
+        print(f"✅ Result: {dados_analise['predicted_class']} ({dados_analise['predicted_percentage_confidence']})")
         return dados_analise
         
     except Exception as e:
         print(f"❌ Error in classification: {e}")
-        return {"status": "erro", "mensagem": str(e)}
+        return {"status": "erro", "message": str(e)}

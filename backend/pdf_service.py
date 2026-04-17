@@ -12,7 +12,7 @@ from .models import Paciente, Chat, Image, ChatMessage
 import re
 from PIL import Image as PILImage
 
-METRICAS_MODELO = {
+MODEL_METRICS = {
     'BG': {'precision': 0.9615, 'recall': 1.0, 'f1-score': 0.9804},
     'D': {'precision': 0.8293, 'recall': 0.7391, 'f1-score': 0.7816},
     'N': {'precision': 0.9259, 'recall': 1.0, 'f1-score': 0.9615},
@@ -21,7 +21,7 @@ METRICAS_MODELO = {
     'V': {'precision': 0.6556, 'recall': 0.9516, 'f1-score': 0.7763}
 }
 
-traducoes = {
+translators = {
     'BG': 'Background',
     'D': 'Diabetic Ulcer', 
     'N': 'Normal Skin',
@@ -31,20 +31,20 @@ traducoes = {
 }
 
 def get_gemini_client():
-    """Retorna o cliente do Gemini"""
+    """Return a configured Gemini client instance using the API key from environment variables."""
     try:
         from google import genai
         api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("GEMINI_API_KEY não encontrada")
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
         client = genai.Client(api_key=api_key)
         return client
     except ImportError:
-        raise ImportError("Biblioteca google-genai não instalada")
+        raise ImportError("google-genai library not installed. Run: pip install google-genai")
 
 def extract_probabilities_from_analysis(db: Session, image_hash: str, chat_id: int) -> dict:
     """
-    Extrai as probabilidades reais da mensagem de análise do Gemini
+    Extract the real probabilities from the Gemini analysis message
     """
     try:
         message = db.query(ChatMessage).filter(
@@ -92,12 +92,12 @@ def extract_probabilities_from_analysis(db: Session, image_hash: str, chat_id: i
             return {}
             
     except Exception as e:
-        print(f"❌ Erro ao extrair probabilidades: {e}")
+        print(f"❌ Error extracting probabilities: {e}")
         return {}
     
 def get_formal_analysis(image_path: str, classification_data: dict) -> str:
     """
-    Usa Gemini para gerar uma análise formal para o PDF
+    Uses Gemini to generate a formal analysis for the PDF
     """
     try:
         client = get_gemini_client()
@@ -105,16 +105,16 @@ def get_formal_analysis(image_path: str, classification_data: dict) -> str:
         with open(image_path, "rb") as f:
             image_data = f.read()
         
-        classe_predita = classification_data.get('classe_predita', 'Desconhecida')
-        classe_traduzida = classification_data.get('classe_traduzida', 'Desconhecida')
-        confianca = classification_data.get('confianca_predita_percentual', 'N/A')
-        probabilidades = classification_data.get('probabilidades_completas', {})
+        predicted_class = classification_data.get('predicted_class', 'Unknown')
+        translated_class = classification_data.get('translated_class', 'Unknown')
+        confianca = classification_data.get('predicted_percentage_confidence', 'N/A')
+        probabilidades = classification_data.get('complete_probabilities', {})
         
         prompt = f"""
         You are a medical expert creating a formal clinical report for documentation.
 
         CLASSIFICATION DATA:
-        - Predicted Class: {classe_predita} ({classe_traduzida})
+        - Predicted Class: {predicted_class} ({translated_class})
         - Model Confidence: {confianca}
         - Probabilities: {probabilidades}
 
@@ -145,19 +145,19 @@ def get_formal_analysis(image_path: str, classification_data: dict) -> str:
         return response.text.strip()
         
     except Exception as e:
-        print(f"❌ Erro ao gerar análise formal: {e}")
-        return "Análise formal não disponível no momento."
+        print(f"❌ Error generating formal analysis: {e}")
+        return "Formal analysis not available at the moment."
 
 def create_metrics_table() -> Table:
-    """Cria tabela com as métricas do modelo"""
+    """Create table with the model metrics"""
     data = [
         ['Class', 'Description', 'Precision', 'Recall', 'F1-Score']
     ]
     
-    for classe, metrics in METRICAS_MODELO.items():
+    for classe, metrics in MODEL_METRICS.items():
         data.append([
             classe,
-            traducoes.get(classe, classe),
+            translators.get(classe, classe),
             f"{metrics['precision']:.3f}",
             f"{metrics['recall']:.3f}",
             f"{metrics['f1-score']:.3f}"
@@ -180,7 +180,7 @@ def create_metrics_table() -> Table:
     return table
 
 def create_image_metrics_table(probabilities: dict) -> Table:
-    """Cria tabela com métricas específicas da imagem usando probabilidades reais"""
+    """Create table with specific metrics for the image using real probabilities"""
     sorted_probs = sorted(probabilities.items(), 
                          key=lambda x: float(x[1].rstrip('%')), 
                          reverse=True)
@@ -197,7 +197,7 @@ def create_image_metrics_table(probabilities: dict) -> Table:
         data.append([
             classe,
             prob_formatted,
-            traducoes.get(classe, classe)
+            translators.get(classe, classe)
         ])
     
     table = Table(data, colWidths=[2.5*cm, 2.5*cm, 4*cm])
@@ -217,7 +217,7 @@ def create_image_metrics_table(probabilities: dict) -> Table:
     return table
 
 def resize_image_for_pdf(image_path: str, max_width: int = 200) -> str:
-    """Redimensiona imagem para o PDF e retorna caminho temporário"""
+    """Resize image for PDF and return temporary path"""
     try:
         with PILImage.open(image_path) as img:
             width_percent = max_width / float(img.size[0])
@@ -230,12 +230,12 @@ def resize_image_for_pdf(image_path: str, max_width: int = 200) -> str:
             
             return temp_path
     except Exception as e:
-        print(f"❌ Erro ao redimensionar imagem: {e}")
+        print(f"❌ Error resizing image: {e}")
         return image_path
 
 def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
     """
-    Cria um relatório PDF profissional para o paciente
+    Create a professional PDF report for the patient
     """
     try:
         paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
@@ -382,10 +382,10 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
                     story.append(Paragraph("<b>Formal Analysis:</b>", normal_style))
                     
                     classification_data = {
-                        'classe_predita': img.classification,
-                        'classe_traduzida': img.description.split('(')[0].strip() if '(' in img.description else img.description,
-                        'confianca_predita_percentual': img.description.split('(')[-1].rstrip(')') if '(' in img.description else 'N/A',
-                        'probabilidades_completas': {img.classification: '100%'}
+                        'predicted_class': img.classification,
+                        'translated_class': img.description.split('(')[0].strip() if '(' in img.description else img.description,
+                        'predicted_percentage_confidence': img.description.split('(')[-1].rstrip(')') if '(' in img.description else 'N/A',
+                        'complete_probabilities': {img.classification: '100%'}
                     }
                     
                     formal_analysis = get_formal_analysis(img.image_path, classification_data)
@@ -454,7 +454,7 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
 
 def generate_report_for_patient(db: Session, paciente_id: int) -> str:
     """
-    Gera relatório PDF e retorna o caminho do arquivo
+    Generate PDF report for a patient and save the report path in the database
     """
     reports_dir = "/app/bucket/reports"
     os.makedirs(reports_dir, exist_ok=True)

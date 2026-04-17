@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True, verbose=True)
 
-METRICAS_MODELO = {
+MODEL_METRICS = {
     'BG': {'precision': 0.9615, 'recall': 1.0, 'f1-score': 0.9804},
     'D': {'precision': 0.8293, 'recall': 0.7391, 'f1-score': 0.7816},
     'N': {'precision': 0.9259, 'recall': 1.0, 'f1-score': 0.9615},
@@ -16,23 +16,23 @@ METRICAS_MODELO = {
 
 def get_gemini_client():
     """
-    Retorna o cliente do Gemini usando google-genai
+    Return a configured Gemini client instance using the API key from environment variables.
     """
     try:
         from google import genai
         
         api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("GEMINI_API_KEY não encontrada")
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
         
         client = genai.Client(api_key=api_key)
         return client
     except ImportError:
-        raise ImportError("Biblioteca google-genai não instalada")
+        raise ImportError("google-genai library not installed. Run: pip install google-genai")
 
 def describe_image_with_analysis(image_path: str, dados_analise: dict):
     """
-    Gera uma descrição técnica detalhada da imagem com base na análise do modelo
+    Generate a detailed technical description of the classified image using Gemini, incorporating the analysis data and model metrics.
     """
     try:
         client = get_gemini_client()
@@ -40,26 +40,26 @@ def describe_image_with_analysis(image_path: str, dados_analise: dict):
         with open(image_path, "rb") as f:
             image_data = f.read()
         
-        classe_predita = dados_analise.get('classe_predita', 'Desconhecida')
-        classe_traduzida = dados_analise.get('classe_traduzida', 'Desconhecida')
-        confianca = dados_analise.get('confianca_predita_percentual', 'N/A')
-        probabilidades = dados_analise.get('probabilidades_completas', {})
+        predicted_class = dados_analise.get('predicted_class', 'Unknown')
+        translated_class = dados_analise.get('translated_class', 'Unknown')
+        confianca = dados_analise.get('predicted_percentage_confidence', 'N/A')
+        probabilidades = dados_analise.get('complete_probabilities', {})
         
         prompt = f"""
         You are a Clinical Decision Support Artificial Intelligence (CDSS) system specialized in the initial screening and classification of skin lesions. Your goal is to generate a concise PRELIMINARY TECHNICAL REPORT and RISK REPORT, using strictly medical language, to be read and validated by a specialist physician.
         
         INPUT INFORMATION FOR THE CLASSIFICATION MODEL (VGG16 Fine-Tuned):
-        1. PREDICTED CLASS: {classe_predita} ({classe_traduzida}) - Confidence: {confianca}
+        1. PREDICTED CLASS: {predicted_class} ({translated_class}) - Confidence: {confianca}
         2. PROBABILITY VECTOR: {probabilidades}
         3. HISTORICAL MODEL METRICS FOR THE PREDICTED CLASS:
-           - Precision: {METRICAS_MODELO.get(classe_predita, {}).get('precision', 'N/A'):.4f}
-           - Recall: {METRICAS_MODELO.get(classe_predita, {}).get('recall', 'N/A'):.4f}
-           - F1-Score: {METRICAS_MODELO.get(classe_predita, {}).get('f1-score', 'N/A'):.4f}
+           - Precision: {MODEL_METRICS.get(predicted_class, {}).get('precision', 'N/A'):.4f}
+           - Recall: {MODEL_METRICS.get(predicted_class, {}).get('recall', 'N/A'):.4f}
+           - F1-Score: {MODEL_METRICS.get(predicted_class, {}).get('f1-score', 'N/A'):.4f}
 
         REQUIRED INFORMATION FOR THE ANSWER (Do not exceed 300 words):
 
         * Identify the primary classification and the model confidence.
-        * Justify. Describe the visual characteristics of the image that corroborate the classification {classe_predita} ({classe_traduzida}).
+        * Justify. Describe the visual characteristics of the image that corroborate the classification {predicted_class} ({translated_class}).
         * Perform a differential analysis. Comment on the 2-3 classes with the highest probability after the primary one, briefly explaining the similarities and differences.
         
         Format your response clearly and technically, using bullet points when appropriate, but never use titles. Only plain text and formatting such as bold, italics, lists, etc. No titles.
@@ -83,16 +83,16 @@ def describe_image_with_analysis(image_path: str, dados_analise: dict):
         return response.text.strip()
         
     except Exception as e:
-        print(f"❌ Erro ao gerar descrição da imagem: {e}")
+        print(f"❌ Error generating image description: {e}")
         return f"""
         **PRELIMINARY TECHNICAL REPORT - CLASSIFIED IMAGE**
 
-        **Primary Classification:** {dados_analise.get('classe_predita', 'N/A')} ({dados_analise.get('classe_traduzida', 'N/A')})
-        **Model Confidence:** {dados_analise.get('confianca_predita_percentual', 'N/A')}
-        **Historical F1-Score:** {dados_analise.get('metrica_f1_classe_predita', 'N/A'):.4f}
+        **Primary Classification:** {dados_analise.get('predicted_class', 'N/A')} ({dados_analise.get('translated_class', 'N/A')})
+        **Model Confidence:** {dados_analise.get('predicted_percentage_confidence', 'N/A')}
+        **Historical F1-Score:** {dados_analise.get('metric_f1_predicted_class', 'N/A'):.4f}
 
         **Differential Analysis (Top 3):**
-        {', '.join([f"{k}: {v}" for k, v in list(dados_analise.get('probabilidades_completas', {}).items())[:3]])}
+        {', '.join([f"{k}: {v}" for k, v in list(dados_analise.get('complete_probabilities', {}).items())[:3]])}
 
         **WARNING:** This is a preliminary report generated by AI and must be validated by direct clinical evaluation.
 

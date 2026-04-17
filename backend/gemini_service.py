@@ -25,31 +25,32 @@ def generate_chat_introduction(paciente_data):
         client = get_gemini_client()
         
         prompt = f"""
-        Você é um sistema de Inteligência Artificial de Suporte à Decisão Clínica (CDSS) especializado na triagem e classificação inicial de lesões de pele. 
+        You are a Clinical Decision Support Artificial Intelligence (CDSS) system specialized in the initial screening and classification of skin lesions.
+
+        Based on the patient information below, generate a concise technical message, using strictly medical language, to be read and validated by a specialist physician presenting the patient below.
         
-        Com base nas informações do paciente abaixo, gere uma mensagem técnica conciso, com linguagem estritamente médica, para ser lido e validado por um médico especialista apresentando o paciente abaixo.
+        PATIENT DATA:
+        - Name: {paciente_data.get('nome', 'Not provided')}
+        - Age: {paciente_data.get('idade', 'Not provided')} years old
+        - Sex: {paciente_data.get('sexo', 'Not provided')}
+        - Type of Diabetes: {paciente_data.get('diabetes_tipo', 'Not provided')}
+        - Medical History: {paciente_data.get('historico_medico', 'Not provided')}
+        - Medicaments: {paciente_data.get('medicamentos', 'Not provided')}
+        - Allergies: {paciente_data.get('alergias', 'Not provided')}
         
-        DADOS DO PACIENTE:
-        - Nome: {paciente_data.get('nome', 'Não informado')}
-        - Idade: {paciente_data.get('idade', 'Não informada')} anos
-        - Sexo: {paciente_data.get('sexo', 'Não informado')}
-        - Tipo de Diabetes: {paciente_data.get('diabetes_tipo', 'Não informado')}
-        - Histórico Médico: {paciente_data.get('historico_medico', 'Nenhum histórico informado')}
-        - Medicamentos: {paciente_data.get('medicamentos', 'Nenhum medicamento informado')}
-        - Alergias: {paciente_data.get('alergias', 'Nenhuma alergia informada')}
+       The message should:
+
+        1. Briefly introduce yourself
+        2. Confirm the patient's main information
+        3. Explain that you are ready to analyze the lesions and answer questions
+        4. Maintain a professional but welcoming tone
+        5. Be concise (maximum 150 words)
         
-        A mensagem deve:
-        1. Se apresentar brevemente
-        2. Confirmar os dados principais do paciente
-        3. Explicar que está pronto para analisar as lesões e responder dúvidas
-        4. Manter tom profissional mas acolhedor
-        5. Ser concisa (máximo 150 palavras)
-        
-        Responda APENAS com o texto da mensagem.
+        Please reply ONLY with the text of the message.
         """
         
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.5-flash-lite',
             contents=prompt
         )
         
@@ -58,12 +59,12 @@ def generate_chat_introduction(paciente_data):
     except Exception as e:
         print(f"❌ Erro ao gerar mensagem com Gemini: {e}")
         return f"""
-        Olá! Eu sou um sistema de Inteligência Artificial de Suporte à Decisão Clínica (CDSS) especializado na triagem e classificação inicial de lesões de pele.
+        Hello! I am a Clinical Decision Support Artificial Intelligence (CDSS) system specialized in the initial screening and classification of skin lesions.
+        
+        Patient: {paciente_data.get('nome', 'Not provided')}
+        Age: {paciente_data.get('idade', 'Not provided')} years old
+        Type of Diabetes: {paciente_data.get('diabetes_tipo', 'Not provided')}
 
-        Paciente: {paciente_data.get('nome', 'Não informado')}
-        Idade: {paciente_data.get('idade', 'Não informada')} anos
-        Tipo de Diabetes: {paciente_data.get('diabetes_tipo', 'Não informado')}
-
-        Estou aqui para analisar as imagens das lesões e responder suas dúvidas sobre o acompanhamento. 
-        Por favor, compartilhe suas preocupações ou faça perguntas sobre o caso.
+        I am here to analyze the images of the skin lesions and answer your questions about the follow-up. 
+        Please share your concerns or ask questions about the case.
         """

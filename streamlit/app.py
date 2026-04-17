@@ -39,7 +39,7 @@ from backend.database_operations import (
 from backend.models import Chat, ChatMessage
 
 st.set_page_config(
-    page_title="Sistema de Análise de Lesões por Pressão",
+    page_title="Pressure Wound Analysis System",
     page_icon="🏥",
     layout="wide"
 )
@@ -85,7 +85,7 @@ def render_message_with_images(message_content: str, container, streaming=False)
 
             cursor = end
 
-        after_text = message_content[cursor:].strip() + "\n\n---\n\n***LLM:** Gemini | **Classificação:** Autoral.*"
+        after_text = message_content[cursor:].strip() + "\n\n---\n\n***LLM:** Gemini | **Classification:** Authorial.*"
         if after_text:
             if streaming:
                 container.write_stream(stream_response(after_text))
@@ -107,43 +107,43 @@ def init_session_state():
 
 def show_patient_form():
     """Mostra formulário de cadastro de paciente"""
-    st.subheader("📝 Cadastrar Novo Paciente")
+    st.subheader("📝 Register New Patient")
     
     with st.form("patient_form", clear_on_submit=True):
-        with st.expander("👤 Informações do Paciente", expanded=True):
+        with st.expander("👤 Patient Information", expanded=True):
             inputNomeContainer, inputDocumentContainer = st.columns(2)
-            nome = inputNomeContainer.text_input("Nome completo (*)", placeholder="João Silva")
-            documento = inputDocumentContainer.text_input("Documento (CPF/RG)", placeholder="000.000.000-00")
+            nome = inputNomeContainer.text_input("Full name (*)", placeholder="Ernane Ferreira")
+            documento = inputDocumentContainer.text_input("Document", placeholder="000.000.000-00")
 
             inputAgeContainer, inputGenderContainer, inputDiabetesTypeContainer = st.columns(3)
-            idade = inputAgeContainer.number_input("Idade (*)", min_value=0, max_value=120, value=0)
-            sexo = inputGenderContainer.selectbox("Sexo (*)", ["", "M", "F"], format_func=lambda x: {"": "Selecione", "M": "Masculino", "F": "Feminino"}[x])
-            diabetes_tipo = inputDiabetesTypeContainer.selectbox("Tipo de Diabetes (*)", 
-                ["", "Tipo 1", "Tipo 2", "Gestacional", "Pré-diabetes", "Outro"],
-                format_func=lambda x: {"": "Selecione", "Tipo 1": "Diabetes Tipo 1", "Tipo 2": "Diabetes Tipo 2", 
-                                        "Gestacional": "Diabetes Gestacional", "Pré-diabetes": "Pré-diabetes", 
-                                        "Outro": "Outro"}[x])
+            idade = inputAgeContainer.number_input("Age (*)", min_value=0, max_value=120, value=0)
+            sexo = inputGenderContainer.selectbox("Gender (*)", ["", "M", "F"], format_func=lambda x: {"": "Select", "M": "Male", "F": "Female"}[x])
+            diabetes_tipo = inputDiabetesTypeContainer.selectbox("Diabetes Type (*)", 
+                ["", "Type 1", "Type 2", "Gestational", "Prediabetes", "Other"],
+                format_func=lambda x: {"": "Select", "Type 1": "Diabetes Type 1", "Type 2": "Diabetes Type 2", 
+                                        "Gestational": "Gestational Diabetes", "Prediabetes": "Prediabetes", 
+                                        "Other": "Other"}[x])
             inputMedicamentosContainer, inputAlergiasContainer = st.columns(2)
-            medicamentos = inputMedicamentosContainer.text_area("Medicamentos em Uso", placeholder="Lista de medicamentos atuais")
-            alergias = inputAlergiasContainer.text_area("Alergias Conhecidas", placeholder="Alergias a medicamentos, alimentos, etc.")
+            medicamentos = inputMedicamentosContainer.text_area("Current Medications", placeholder="List of current medications")
+            alergias = inputAlergiasContainer.text_area("Known Allergies", placeholder="Known allergies to medications, foods, etc.")
             
-            historico_medico = st.text_area("Histórico Médico", placeholder="Doenças pré-existentes, cirurgias, etc.")
+            historico_medico = st.text_area("Medical History", placeholder="Pre-existing diseases, surgeries, etc.")
 
-        with st.expander("📸 Imagens das Lesões", expanded=False):
+        with st.expander("📸 Images of the Wounds", expanded=False):
             uploaded_files = st.file_uploader(
-                "Selecione imagens das lesões",
+                "Select images of the lesions.",
                 type=['jpg', 'jpeg', 'png'],
                 accept_multiple_files=True,
-                help="Faça upload das imagens das lesões por pressão"
+                help="Upload images of pressure injuries. You can upload multiple images at once or take a photo using your device's camera."
             )
         
-            st.write("**Ou tire uma foto:**")
+            st.write("**Or take a photo:**")
             _, cameraInput, _ = st.columns([1, 1, 1])
-            camera_image = cameraInput.camera_input("Câmera Integrada", width=1080)
+            camera_image = cameraInput.camera_input("Integrated Camera", width=1080)
             
         col1, col2 = st.columns(2)
-        cancel_submitted = col1.form_submit_button("❌ Cancelar", width='stretch')
-        submitted = col2.form_submit_button("💾 Salvar Paciente e Processar Análise", width='stretch')
+        cancel_submitted = col1.form_submit_button("❌ Cancel", width='stretch')
+        submitted = col2.form_submit_button("💾 Save Patient and Process Analysis", width='stretch')
         
         if cancel_submitted:
             st.session_state.show_form = False
@@ -151,7 +151,7 @@ def show_patient_form():
         
         if submitted:
             if not nome or not idade or not sexo or not diabetes_tipo:
-                st.error("Por favor, preencha todos os campos obrigatórios (*)")
+                st.error("Please fill in all required fields (*)")
                 st.stop()
             
             images_data = []
@@ -170,7 +170,7 @@ def show_patient_form():
             
             try:
                 if len(images_data) == 0:
-                    raise Exception("Nenhuma imagem enviada. É necessário ao menos uma imagem da lesão.")
+                    raise Exception("No images uploaded. At least one image of the lesion is required.")
                 
                 db = next(get_db())
                 _ = create_paciente_with_chat(
@@ -188,16 +188,16 @@ def show_patient_form():
                     images_data
                 )
                 
-                st.success(f"✅ Paciente {nome} cadastrado com sucesso!")
+                st.success(f"✅ Patient {nome} registered successfully!")
                 if images_data:
-                    st.info(f"📷 {len(images_data)} imagem(s) enviada(s) para análise")
+                    st.info(f"📷 {len(images_data)} image(s) sent for analysis")
                 
                 st.session_state.show_form = False
                 time.sleep(1)
                 st.rerun()
                 
             except Exception as e:
-                st.error(f"Erro ao salvar paciente: {str(e)}")
+                st.error(f"Error saving patient: {str(e)}")
 
 def show_chat_view(patient_id):
     """Mostra a view do chat para um paciente específico"""
@@ -205,7 +205,7 @@ def show_chat_view(patient_id):
     paciente_data = get_paciente_with_chat(db, patient_id)
     
     if not paciente_data:
-        st.error("Paciente não encontrado")
+        st.error("Patient not found")
         return
     
     paciente = paciente_data['paciente']
@@ -213,19 +213,19 @@ def show_chat_view(patient_id):
     images = paciente_data['images']
 
     with st.sidebar:
-        st.subheader(f"💬 Chat {paciente.nome}")
-        if st.button("👈🏼 Voltar", width='stretch'):
+        st.subheader(f"💬 Patient: {paciente.nome}")
+        if st.button("👈🏼 Back", width='stretch'):
             st.query_params.clear()
             st.rerun()
         
-        if st.button("🔄 Ré-Classificar Tudo", type="primary", width='stretch'):
+        if st.button("🔄 Re-Classify All", type="primary", width='stretch'):
             classify_all_images_in_chat(db, chat.id)
-            st.success("✅ Todas as imagens foram reenviadas para classificação!")
+            st.success("✅ All images were re-sent for classification!")
             time.sleep(3)
             st.rerun()
         
-        if st.button("📄 Gerar Pré-Laudo PDF", type="primary", width='stretch', use_container_width=True):
-            with st.spinner("Gerando relatório PDF..."):
+        if st.button("📄 Generate Pre-Laud PDF", type="primary", width='stretch', use_container_width=True):
+            with st.spinner("Generating PDF report..."):
                 try:
                     from backend.database_operations import generate_pdf_report
                     pdf_path = generate_pdf_report(db, paciente.id)
@@ -233,9 +233,9 @@ def show_chat_view(patient_id):
                     with open(pdf_path, "rb") as pdf_file:
                         pdf_bytes = pdf_file.read()
                     
-                    st.success("✅ Relatório gerado com sucesso!")
+                    st.success("✅ PDF report generated successfully!")
                     st.download_button(
-                        label="📥 Download do Pré-Laudo PDF",
+                        label="📥 Download the Pre-Laud PDF",
                         data=pdf_bytes,
                         file_name=f"pre_laudo_{paciente.nome}_{datetime.now().strftime('%Y%m%d')}.pdf",
                         mime="application/pdf",
@@ -244,43 +244,43 @@ def show_chat_view(patient_id):
                     )
                     
                 except Exception as e:
-                    st.error(f"❌ Erro ao gerar PDF: {str(e)}")
+                    st.error(f"❌ Error generating PDF: {str(e)}")
         
             
         st.divider()
 
-        with st.expander("👤 Informações do Paciente", expanded=True):
-            st.write("#### 📋 Dados Pessoais")
+        with st.expander("👤 Patient Information", expanded=True):
+            st.write("#### 📋 Personal Data")
             st.write(f"""
-                    - **Nome:** {paciente.nome}
-                    - **Documento:** {paciente.documento if paciente.documento else "*Não informado*"}
-                    - **Idade:** {paciente.idade} anos
-                    - **Sexo:** {paciente.sexo}
+                    - **Name:** {paciente.nome}
+                    - **Doc:** {paciente.documento if paciente.documento else "*Not informed*"}
+                    - **Age:** {paciente.idade} years old
+                    - **Sex:** {paciente.sexo}
                     - **Diabetes:** {paciente.diabetes_tipo}
                     """)
-            st.write("#### 🗄️ Histórico Médico")
+            st.write("#### 🗄️ Medical History")
             if paciente.historico_medico:
                 st.write(f"{(paciente.historico_medico[:500]).strip()}..." if len(paciente.historico_medico) > 500 else paciente.historico_medico)
             else:
-                st.write("*Não informado*")
+                st.write("*Not informed*")
 
-            st.write("#### 💊 Medicamentos & Alergias")
+            st.write("#### 💊 Medications and Allergies")
             if paciente.medicamentos:
-                st.write(f"- **Medicamentos:** {paciente.medicamentos}")
+                st.write(f"- **Medications:** {paciente.medicamentos}")
             if paciente.alergias:
-                st.write(f"- **Alergias:** {paciente.alergias}")
+                st.write(f"- **Allergies:** {paciente.alergias}")
         
-        with st.expander("📸 Lesões", expanded=False):
+        with st.expander("📸 Wounds", expanded=False):
             new_uploaded_files = st.file_uploader(
-                "Adicionar Novas Imagens",
+                "Add New Images",
                 type=['jpg', 'jpeg', 'png'],
                 accept_multiple_files=True,
                 key=f"new_images_{patient_id}",
-                help="Faça upload de novas imagens para análise"
-            )
+                    help="Upload new images for analysis. You can upload multiple images at once or take a photo using your device's camera."
+                )
             
             if new_uploaded_files:
-                if st.button("📤 Enviar Novas Imagens", key=f"send_new_images_{patient_id}", type="primary", width='stretch'):
+                if st.button("📤 Send New Images", key=f"send_new_images_{patient_id}", type="primary", width='stretch'):
                     try:
                         images_data = []
                         for uploaded_file in new_uploaded_files:
@@ -291,17 +291,17 @@ def show_chat_view(patient_id):
                         
                         saved_images = add_images_to_chat(db, chat.id, images_data)
                         
-                        st.success(f"✅ {len(saved_images)} nova(s) imagem(ns) enviada(s) para análise!")
+                        st.success(f"✅ {len(saved_images)} new image(s) sent for analysis!")
                         time.sleep(1)
                         st.rerun()
                             
                     except Exception as e:
-                        st.error(f"❌ Erro ao salvar novas imagens: {str(e)}")
+                        st.error(f"❌ Error saving new images: {str(e)}")
             
             st.divider()
             if images:
                 for idx, img in enumerate(images):
-                    status_emoji = "" if img.classification != "Pendente" else "⏳"
+                    status_emoji = "" if img.classification != "Pending" else "⏳"
                     
                     try:
                         if os.path.exists(img.image_path):
@@ -316,13 +316,13 @@ def show_chat_view(patient_id):
                             )
                         
                         else:
-                            st.warning(f"📄 Arquivo não encontrado: {img.filename}")
+                            st.warning(f"📄 File not found: {img.filename}")
                             
                     except Exception as e:
-                        st.error(f"❌ Erro ao carregar imagem: {img.filename}")
-                        st.code(f"Erro: {str(e)}")
+                        st.error(f"❌ Error loading image: {img.filename}")
+                        st.code(f"Error: {str(e)}")
             else:
-                st.info("📝 Nenhuma imagem cadastrada ainda.")
+                st.info("📝 No images registered yet.")
         
         st.divider()
     
@@ -330,7 +330,7 @@ def show_chat_view(patient_id):
         chat_messages = db.query(ChatMessage).filter(ChatMessage.chat_id == chat.id).order_by(ChatMessage.created_at).all()
         
         if not chat_messages:
-            st.info("💡 Inicie uma conversa sobre as lesões do paciente")
+            st.info("💡 Start a conversation about the patient's wounds")
         
         for msg in chat_messages:
             if msg.is_user:
@@ -340,7 +340,7 @@ def show_chat_view(patient_id):
                 with st.chat_message("assistant"):
                     render_message_with_images(msg.content, st, streaming=False)
         
-    user_input = st.chat_input("Digite sua mensagem sobre as lesões...")
+    user_input = st.chat_input("Type your message about the wounds...")
     
     if user_input:
         user_message = ChatMessage(
@@ -358,7 +358,7 @@ def show_chat_view(patient_id):
         with st.chat_message("assistant"):
             response_placeholder = st.empty()
             
-            with st.spinner("Analisando sua pergunta..."):
+            with st.spinner("Analyzing your question..."):
                 from backend.chat_service import generate_chat_response
                 full_response = generate_chat_response(db, chat.id, user_input)
         
@@ -391,8 +391,8 @@ def main():
     st.markdown(
         """
         <div style="text-align: center;">
-            <h1>🏥 Sistema de Análise de Lesões por Pressão</h1>
-            <p>Análise assistida por IA para pacientes diabéticos</p>
+            <h1>🏥 Wounds Analysis System</h1>
+            <p>AI-assisted analysis for lesions in patients</p>
             <br/>
         </div>
         """,
@@ -406,13 +406,13 @@ def main():
         
         with col1:
             search_term = st.text_input(
-                "🔍 Buscar Paciente:",
-                placeholder="Digite o nome ou documento do paciente...",
+                "🔍 Search for Patient:",
+                placeholder="Enter the patient's name or document number...",
                 key="search_input",
             )
         
         with col2:
-            if st.button("➕ Novo Paciente", type="primary", width='stretch', key="new_patient_button"):
+            if st.button("➕ New Patient", type="primary", width='stretch', key="new_patient_button"):
                 st.session_state.show_form = True
                 st.rerun()
             st.markdown("<style>.st-key-new_patient_button {margin-top: 26.5px;}</style>", unsafe_allow_html=True)
@@ -422,7 +422,7 @@ def main():
             pacientes = search_pacientes(db, search_term)
             
             if pacientes:
-                st.subheader(f"📋 Pacientes ({len(pacientes)})")
+                st.subheader(f"📋 Patients ({len(pacientes)})")
                 
                 df_data = []
                 for p in pacientes:
@@ -452,64 +452,64 @@ def main():
                     column_config = {
                         "id": st.column_config.NumberColumn(
                             "ID",
-                            help="Identificador do paciente",
+                            help="Patient ID",
                             format="%d",
                             width="small"
                         ),
                         "acesso": st.column_config.LinkColumn(
-                            "Acesso Rápido",
-                            help="Clique para abrir o chat do paciente",
+                            "Quick Access",
+                            help="Click to open the patient chat.",
                             width="small"
                         ),
                         "nome": st.column_config.TextColumn(
-                            "Nome",
-                            help="Clique em 'Abrir' na coluna à direita para abrir o paciente",
+                            "Name",
+                            help="Click 'Open' in the right-hand column to open the patient.",
                             width="large"
                         ),
                         "idade": st.column_config.NumberColumn(
-                            "Idade (anos)",
-                            help="Idade em anos",
+                            "Age",
+                            help="Age in years",
                             format="%.0f",
                             width="small"
                         ),
                         "sexo": st.column_config.ListColumn(
-                            "Sexo",
+                            "Sex",
                             help="M / F / -",
                             width="extra_small"
                         ),
                         "documento": st.column_config.TextColumn(
-                            "Documento",
-                            help="Parcialmente mascarado",
+                            "Document",
+                            help="Patient Document",
                             width="small"
                         ),
                         "diabetes_tipo": st.column_config.ListColumn(
                             "Diabetes",
-                            help="Tipo de diabetes",
+                            help="Type of diabetes",
                             width="small"
                         ),
                         "status": st.column_config.ListColumn(
-                            "Status da Análise",
-                            help="Status atual do processamento das imagens",
+                            "Analysis Status",
+                            help="Current status of image processing.",
                             width="small"
                         ),
                         "historico_medico": st.column_config.TextColumn(
-                            "Histórico",
-                            help="Clique em 'Ver' para detalhes (usar detalhe individual)",
+                            "History",
+                            help="Click 'View' for details (use individual detail)",
                             width="xxl"
                         ),
                         "medicamentos": st.column_config.TextColumn(
-                            "Medicamentos",
-                            help="Principais medicamentos",
+                            "Medications",
+                            help="Main medications",
                             width="large"
                         ),
                         "alergias": st.column_config.TextColumn(
-                            "Alergias",
-                            help="Alergias conhecidas",
+                            "Allergies",
+                            help="Known allergies",
                             width="large"
                         ),
                         "created_at": st.column_config.DatetimeColumn(
-                            "Criado em",
-                            help="Data de criação",
+                            "Created in",
+                            help="Creation date",
                             format="DD/MM/YYYY à\s HH:mm",
                             width="small"
                         ),
@@ -518,12 +518,12 @@ def main():
             
             else:
                 if search_term:
-                    st.info(f"🔍 Nenhum paciente encontrado para '{search_term}'")
+                    st.info(f"🔍 No patients found for '{search_term}'")
                 else:
-                    st.info("📝 Nenhum paciente cadastrado ainda. Clique em 'Novo Paciente' para começar.")
+                    st.info("📝 No patients registered yet. Click on 'New Patient' to begin.")
         
         except Exception as e:
-            st.error(f"Erro ao conectar com o banco de dados: {str(e)}")
+            st.error(f"Error connecting to the database: {str(e)}")
 
 if __name__ == "__main__":
     main()

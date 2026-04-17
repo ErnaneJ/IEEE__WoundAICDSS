@@ -176,7 +176,7 @@ def classificar_imagem_individual(self, image_id):
                     mensagem_chat = ChatMessage(
                         chat_id=img.chat_id,
                         content=f"""
-Imagem classificada como {resultado['classe_traduzida']} com uma probabilidade de {resultado['confianca_predita_percentual']}.
+Image classified as {resultado['classe_traduzida']} with a probability of {resultado['confianca_predita_percentual']}.
 
 @@IMAGE:{os.path.basename(image_path).split('.')[0]}@@
 

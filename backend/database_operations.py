@@ -107,7 +107,7 @@ def create_paciente_with_chat(db: Session, paciente_data, images_data=[]):
             chat_id=chat.id,
             image_path=file_path,
             filename=img_data['filename'],
-            description="Aguardando processamento...",
+            description="Waiting for analysis...",
             classification="Pendente"
         )
         db.add(image)
@@ -182,20 +182,20 @@ def get_paciente_with_chat(db: Session, paciente_id: int):
 def get_chat_status(chat):
     """Retorna status do processamento do chat"""
     if not chat:
-        return "Não criado"
+        return "No Chat"
     
     images = chat.images
     if not images:
-        return "Sem imagens"
+        return "No images"
     
-    processed = all(img.classification != "Pendente" for img in images)
+    processed = all(img.classification != "Pending" for img in images)
     
     if processed:
-        return "Processado"
-    elif any(img.classification != "Pendente" for img in images):
-        return "Processando"
+        return "Processed"
+    elif any(img.classification != "Pending" for img in images):
+        return "Processing"
     else:
-        return "Pendente"
+        return "Pending"
 
 def get_chat_images(db: Session, chat_id: int):
     """Retorna imagens associadas a um chat"""
@@ -216,8 +216,8 @@ def add_images_to_chat(db: Session, chat_id: int, images_data: list):
                 chat_id=chat_id,
                 image_path=file_path,
                 filename=img_data['filename'],
-                description="Aguardando processamento...",
-                classification="Pendente"
+                description="Waiting for analysis...",
+                classification="Pending"
             )
             db.add(image)
             saved_images.append(image)

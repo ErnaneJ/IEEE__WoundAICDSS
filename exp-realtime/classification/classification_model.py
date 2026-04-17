@@ -53,11 +53,11 @@ def carregar_recursos():
 def traduzir_classe(classe):
     traducoes = {
         'BG': 'Background',
-        'D': 'Ulcera Diabetica', 
-        'N': 'Pele Normal',
-        'P': 'Ulcera por Pressao',
-        'S': 'Ferida Cirurgica',
-        'V': 'Ulcera Venosa'
+        'D': 'Diabetic Ulcer', 
+        'N': 'Normal Skin',
+        'P': 'Pressure Ulcer',
+        'S': 'Surgical Wound',
+        'V': 'Venous Ulcer'
     }
     return traducoes.get(classe, classe)
 

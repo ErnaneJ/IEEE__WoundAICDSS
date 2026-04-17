@@ -24,7 +24,7 @@ def carregar_recursos():
         return True
 
     try:
-        print("📦 Carregando modelo...")
+        print("📦  Loading Model....")
         
         base_model = VGG16(weights=None, include_top=False, input_shape=(224, 224, 3))
         for layer in base_model.layers:
@@ -42,22 +42,22 @@ def carregar_recursos():
         print("✅ Modelo carregado")
         
         METRICAS_DF = pd.read_csv(METRICAS_CSV_PATH, index_col=0)
-        print("✅ Métricas carregadas")
+        print("✅ Metrics loaded")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao carregar recursos: {e}")
+        print(f"❌ Error to load model or metrics: {e}")
         return False
 
 def traduzir_classe(classe):
     traducoes = {
         'BG': 'Background',
-        'D': 'Úlcera Diabética', 
-        'N': 'Pele Normal',
-        'P': 'Úlcera por Pressão',
-        'S': 'Ferida Cirúrgica',
-        'V': 'Úlcera Venosa'
+        'D': 'Diabetic Ulcer', 
+        'N': 'Normal Skin',
+        'P': 'Pressure Ulcer',
+        'S': 'Surgical Wound',
+        'V': 'Venous Ulcer'
     }
     return traducoes.get(classe, classe)
 
@@ -67,10 +67,10 @@ def classificar_imagem(image_path: str) -> dict:
     probabilidades e métricas de risco para o LLM.
     """
     if not carregar_recursos():
-        return {"status": "erro", "mensagem": "Falha ao carregar modelo ou métricas."}
+        return {"status": "erro", "mensagem": "Failed to load model or metrics."}
     
     try:
-        print(f"🔍 Processando: {os.path.basename(image_path)}")
+        print(f"🔍 Processing: {os.path.basename(image_path)}")
         
         img = Image.open(image_path).convert('RGB')
         img = img.resize(IMG_SIZE)
@@ -87,7 +87,7 @@ def classificar_imagem(image_path: str) -> dict:
         
         recall_p = float(METRICAS_DF.loc['P', 'recall'])
         
-        top_classes = np.argsort(predictions)[::-1] # Índices em ordem decrescente
+        top_classes = np.argsort(predictions)[::-1]
         top_3_classes = [CLASSES[i] for i in top_classes[:3]]
         
         dados_analise = {
@@ -100,13 +100,13 @@ def classificar_imagem(image_path: str) -> dict:
             "metrica_f1_classe_predita": float(METRICAS_DF.loc[classe_predita, 'f1-score']),
             "risco_p": {
                 "Recall_P": recall_p,
-                "Aviso_P": f"Recall histórico ({recall_p:.2f}) para Úlcera por Pressão é baixo. Cautela é necessária."
+                "Aviso_P": f"Historical recall ({recall_p:.2f}) for Pressure Ulcer is low. Caution is advised."
             }
         }
         
-        print(f"✅ Resultado: {dados_analise['classe_predita']} ({dados_analise['confianca_predita_percentual']})")
+        print(f"✅ Result: {dados_analise['classe_predita']} ({dados_analise['confianca_predita_percentual']})")
         return dados_analise
         
     except Exception as e:
-        print(f"❌ Erro na classificação: {e}")
+        print(f"❌ Error in classification: {e}")
         return {"status": "erro", "mensagem": str(e)}

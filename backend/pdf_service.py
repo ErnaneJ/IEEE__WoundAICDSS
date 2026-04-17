@@ -23,11 +23,11 @@ METRICAS_MODELO = {
 
 traducoes = {
     'BG': 'Background',
-    'D': 'Úlcera Diabética', 
-    'N': 'Pele Normal',
-    'P': 'Úlcera por Pressão',
-    'S': 'Ferida Cirúrgica',
-    'V': 'Úlcera Venosa'
+    'D': 'Diabetic Ulcer', 
+    'N': 'Normal Skin',
+    'P': 'Pressure Ulcer',
+    'S': 'Surgical Wound',
+    'V': 'Venous Ulcer'
 }
 
 def get_gemini_client():
@@ -59,29 +59,28 @@ def extract_probabilities_from_analysis(db: Session, image_hash: str, chat_id: i
         client = get_gemini_client()
         
         prompt = f"""
-        Analise o seguinte texto de análise médica e extraia APENAS as probabilidades de classificação 
-        no formato EXATO: {{'CLASSE': 'X.XX%', 'CLASSE': 'X.XX%', ...}}
+        Analyze the following medical analysis text and extract ONLY the classification probabilities in EXACT format: {{'CLASS': 'X.XX%', 'CLASS': 'X.XX%', ...}}
         
-        TEXTO:
+        TEXT TO ANALYZE:
         {message.content}
         
-        Regras:
-        1. Extraia apenas as probabilidades no formato de dicionário Python
-        2. Use as classes: BG, D, N, P, S, V
-        3. Mantenha os valores exatos com duas casas decimais e símbolo de porcentagem
-        4. Se não encontrar probabilidades, retorne {{}}
-        5. Não adicione nenhum texto explicativo, apenas o dicionário
-        6. Somente as que tiverem no texto, não precisa retornar todas as classes se não estiverem presentes
+        Rules:
+        1. Extract only the probabilities in Python dictionary format.
+        2. Use the classes: BG, D, N, P, S, V.
+        3. Keep the exact values ​​with two decimal places and percentage symbol.
+        4. If no probabilities are found, return {{}}.
+        5. Do not add any explanatory text, only the dictionary.
+        6. Only those that are in the text; you don't need to return all classes if they are not present.
         
-        Exemplo 1 de saída esperada:
+        Example 1 of expected output:
         {{'BG': '0.01%', 'D': '84.28%', 'N': '0.00%', 'P': '10.50%', 'S': '1.00%', 'V': '4.21%'}}
         
-        Exemplo 2 de saída esperada:
+        Example 2 of expected output:
         {{'D': '84.28%', 'P': '10.50%', 'S': '1.00%'}}
         """
         
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
+            model='gemini-2.5-flash-lite',
             contents=prompt
         )
         
@@ -112,28 +111,28 @@ def get_formal_analysis(image_path: str, classification_data: dict) -> str:
         probabilidades = classification_data.get('probabilidades_completas', {})
         
         prompt = f"""
-        Você é um especialista médico criando um laudo formal para documentação clínica.
+        You are a medical expert creating a formal clinical report for documentation.
 
-        DADOS DA CLASSIFICAÇÃO:
-        - Classe Predita: {classe_predita} ({classe_traduzida})
-        - Confiança do Modelo: {confianca}
-        - Probabilidades: {probabilidades}
+        CLASSIFICATION DATA:
+        - Predicted Class: {classe_predita} ({classe_traduzida})
+        - Model Confidence: {confianca}
+        - Probabilities: {probabilidades}
 
-        Crie uma descrição formal e técnica para inclusão em um laudo médico PDF. A descrição deve:
+        Create a formal and technical description for inclusion in a PDF medical report. The description should:
 
-        1. Ser concisa (máximo 150 palavras)
-        2. Usar linguagem médica formal
-        3. Descrever as características visuais relevantes
-        4. Mencionar o nível de confiança da classificação
-        5. Incluir considerações sobre diagnósticos diferenciais baseados nas probabilidades
-        6. Manter tom profissional e objetivo
+        1. Be concise (maximum 150 words)
+        2. Use formal medical language
+        3. Describe relevant visual characteristics
+        4. Mention the level of confidence in the classification
+        5. Include considerations about differential diagnoses based on probabilities
+        6. Maintain a professional and objective tone
 
-        Formate a resposta em parágrafos curtos, sem marcadores. Não use markdown, apenas texto simples.
+        Format the response in short paragraphs, without markers. Do not use markdown, only plain text.
         """
         
         from google.genai import types
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
+            model='gemini-2.5-flash-lite',
             contents=[
                 prompt,
                 types.Part.from_bytes(
@@ -152,7 +151,7 @@ def get_formal_analysis(image_path: str, classification_data: dict) -> str:
 def create_metrics_table() -> Table:
     """Cria tabela com as métricas do modelo"""
     data = [
-        ['Classe', 'Descrição', 'Precision', 'Recall', 'F1-Score']
+        ['Class', 'Description', 'Precision', 'Recall', 'F1-Score']
     ]
     
     for classe, metrics in METRICAS_MODELO.items():
@@ -186,7 +185,7 @@ def create_image_metrics_table(probabilities: dict) -> Table:
                          key=lambda x: float(x[1].rstrip('%')), 
                          reverse=True)
     
-    data = [['Classificação', 'Probabilidade', 'Descrição']]
+    data = [['Classification', 'Probability', 'Description']]
     
     for classe, prob in sorted_probs:
         try:
@@ -256,11 +255,11 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
             leftMargin=72,
             topMargin=72,
             bottomMargin=72,
-            title=f"Pré-Laudo - {paciente.nome}",
-            author="Sistema de Análise de Lesões por Pressão",
-            subject=f"Análise de lesões para paciente {paciente.nome}",
-            creator="Sistema de Análise Assistida por IA",
-            keywords=f"lesão, pressão, diabetes, {paciente.nome}, pré-laudo"
+            title=f"Preliminary Report - {paciente.nome}",
+            author="Lesion Analysis System por Pressão",
+            subject=f"Lesion analysis for patient {paciente.nome}",
+            creator="AI-Assisted Analysis System",
+            keywords=f"Lesion, pressure, diabetes,{paciente.nome}, preliminary-report"
         )
         
         styles = getSampleStyleSheet()
@@ -312,39 +311,36 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
         story = []
         
         header_text = """
-        <b>PRÉ-LAUDO MÉDICO - ANÁLISE DE LESÕES</b><br/>
-        <i>Sistema de IA de Suporte à Decisão Clínica<br/>(IA-CDSS)</i>
+        <b>PRELIMINARY MEDICAL REPORT - LESION ANALYSIS</b><br/>
+        <i>AI-CDSS - Artificial Intelligence Clinical Decision Support System</i>
         """
         story.append(Paragraph(header_text, title_style))
         story.append(Spacer(1, 10))
         
         data_emissao = f"""
-        <b>Data de emissão:</b> {datetime.now().strftime('%d/%m/%Y às %H:%M')}<br/><br/>
-        <b>Antonio de Oliveira</b> - Mestrando<br/>
-        <b>Ernane Ferreira</b> - Mestrando<br/>
-        <b>Prof. Dr. Ricardo Valentim</b>
+        <b>Issue date:</b> {datetime.now().strftime('%m/%d/%Y às %H:%M')}<br/><br/>
         """
         story.append(Paragraph(data_emissao, small_style))
         
-        story.append(Paragraph("1. INFORMAÇÕES DO PACIENTE", heading_style))
+        story.append(Paragraph("1. PATIENT INFORMATION", heading_style))
         
         paciente_info = f"""
-        <b>Nome:</b> {paciente.nome}<br/>
-        <b>Idade:</b> {paciente.idade} anos<br/>
-        <b>Sexo:</b> {paciente.sexo}<br/>
-        <b>Tipo de Diabetes:</b> {paciente.diabetes_tipo}<br/>
-        <b>Documento:</b> {paciente.documento or 'Não informado'}<br/>
-        <b>Histórico Médico:</b> {paciente.historico_medico or 'Não informado'}<br/>
-        <b>Medicamentos:</b> {paciente.medicamentos or 'Não informado'}<br/>
-        <b>Alergias:</b> {paciente.alergias or 'Nenhuma informada'}
+        <b>Name:</b> {paciente.nome}<br/>
+        <b>Age:</b> {paciente.idade} years old<br/>
+        <b>Sex:</b> {paciente.sexo}<br/>
+        <b>Diabetes Type:</b> {paciente.diabetes_tipo}<br/>
+        <b>Document:</b> {paciente.documento or 'Not informed'}<br/>
+        <b>Medical History:</b> {paciente.historico_medico or 'Not informed'}<br/>
+        <b>Medications:</b> {paciente.medicamentos or 'Not informed'}<br/>
+        <b>Allergies:</b> {paciente.alergias or 'Not informed'}
         """
         story.append(Paragraph(paciente_info, normal_style))
         
         if images:
-            story.append(Paragraph("2. ANÁLISE DAS LESÕES", heading_style))
+            story.append(Paragraph("2. LESION ANALYSIS", heading_style))
             
             for i, img in enumerate(images, 1):
-                story.append(Paragraph(f"<b>2.{i} Lesão {i}:</b>", subheading_style))
+                story.append(Paragraph(f"<b>2.{i} Lesion {i}:</b>", subheading_style))
                 
                 try:
                     if os.path.exists(img.image_path):
@@ -356,13 +352,13 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
                     print(f"❌ Erro ao adicionar imagem: {e}")
                 
                 img_basic_info = f"""
-                <b>Classificação:</b> {img.classification} - {img.description}<br/>
-                <b>Arquivo:</b> {img.filename}<br/>
-                <b>Distribuição de Probabilidades:</b>
+                <b>Classification:</b> {img.classification} - {img.description}<br/>
+                <b>File:</b> {img.filename}<br/>
+                <b>Probability Distribution:</b>
                 """
                 story.append(Paragraph(img_basic_info, normal_style))
                 
-                if img.classification != "Pendente" and img.classification != "ERROR":
+                if img.classification != "Pending" and img.classification != "ERROR":
                     image_hash = os.path.basename(img.image_path).split('.')[0]
                     
                     probabilities = extract_probabilities_from_analysis(db, image_hash, chat.id)
@@ -382,8 +378,8 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
                     story.append(metrics_table)
                     story.append(Spacer(1, 10))
                 
-                if img.classification != "Pendente" and img.classification != "ERROR":
-                    story.append(Paragraph("<b>Análise Formal:</b>", normal_style))
+                if img.classification != "Pending" and img.classification != "ERROR":
+                    story.append(Paragraph("<b>Formal Analysis:</b>", normal_style))
                     
                     classification_data = {
                         'classe_predita': img.classification,
@@ -395,18 +391,18 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
                     formal_analysis = get_formal_analysis(img.image_path, classification_data)
                     story.append(Paragraph(formal_analysis, small_style))
         else:
-            story.append(Paragraph("Nenhuma imagem analisada disponível.", normal_style))
+            story.append(Paragraph("No analyzed images available.", normal_style))
         
-        story.append(Paragraph("3. INFORMAÇÕES DO SISTEMA", heading_style))
+        story.append(Paragraph("3. SYSTEM INFORMATION", heading_style))
         
-        story.append(Paragraph("<b>Desempenho do Modelo de Classificação:</b>", subheading_style))
+        story.append(Paragraph("<b>Performance of the Classification Model:</b>", subheading_style))
         
         metrics_explanation = """
-        <b>Glossário de Métricas:</b><br/>
-        • <b>Precision</b>: Acerto nas previsões positivas (exatidão)<br/>
-        • <b>Recall</b>: Capacidade de encontrar todos os casos positivos (sensibilidade)<br/>
-        • <b>F1-Score</b>: Média harmônica entre Precision e Recall<br/>
-        • <b>Valores</b>: 0.000 (pior) a 1.000 (melhor)
+        <b>Glossary of Metrics:</b><br/>
+        • <b>Precision</b>: Accuracy in positive predictions (precision)<br/>
+        • <b>Recall</b>: Ability to find all positive cases (sensitivity)<br/>
+        • <b>F1-Score</b>: Harmonic mean between Precision and Recall<br/>
+        • <b>Values</b>: 0.000 (worst) to 1.000 (best)
         """
         story.append(Paragraph(metrics_explanation, small_style))
         story.append(Spacer(1, 10))
@@ -416,29 +412,26 @@ def create_pdf_report(db: Session, paciente_id: int, output_path: str) -> str:
         story.append(Spacer(1, 15))
         
         model_info = """
-        <b>Sistema de Classificação:</b> Rede Neural Convolucional VGG16 Fine-Tuned<br/>
-        <b>Finalidade:</b> Auxílio à decisão clínica para triagem inicial de lesões<br/>
-        <b>Treinamento:</b> Dataset especializado em lesões de pele<br/>
-        <b>Processamento:</b> Análise automática de características visuais
+        <b>Classification System:</b> VGG16 Fine-Tuned Convolutional Neural Network<br/>
+        <b>Purpose:</b> Auxiliary clinical decision support for initial lesion screening<br/>
+        <b>Training:</b> Dataset specialized in skin lesions<br/>
+        <b>Processing:</b> Automatic visual feature analysis
         """
         story.append(Paragraph(model_info, normal_style))
         
-        story.append(Paragraph("4. OBSERVAÇÕES E RECOMENDAÇÕES", heading_style))
+        story.append(Paragraph("4. OBSERVATIONS AND RECOMMENDATIONS", heading_style))
         
         observacoes = """
-        • Este documento constitui um <b>PRÉ-LAUDO</b> gerado por sistema de Inteligência Artificial;<br/>
-        • <b>Não substitui</b> a avaliação de profissional de saúde qualificado;<br/>
-        • Para úlceras por pressão (Classe P), o sistema possui <b>sensibilidade limitada</b> (recall: 26.47%).<br/>
+        • This document constitutes a <b>PRELIMINARY REPORT</b> generated by an Artificial Intelligence system;<br/>
+        • <b>Does not replace</b> the evaluation of a qualified healthcare professional;<br/>
+        • For pressure ulcers (Class P), the system has <b>limited sensitivity</b> (recall: 26.47%).<br/>
         """
         story.append(Paragraph(observacoes, normal_style))
         
         story.append(Spacer(1, 30))
         footer_text = f"""
-        <i>Documento gerado automaticamente - Sistema de Análise de Lesões por Pressão<br/>
-        Paciente: {paciente.nome} | ID: {paciente.id} | Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}<br/><br/>
-        2025 - UNIVERSIDADE FEDERAL DO RIO GRANDE DO NORTE (UFRN)<br/>
-        MESTRADO EM ENGENHARIA ELÉTRICA E DE COMPUTAÇÃO/PPGEEC/CT - NATAL<br/>
-        PPGEEC2328 - TÓPICOS ESPECIAIS EM PROCESSAMENTO EMBARCADO E DISTRIBUÍDO
+        <i>Document generated automatically - Wound Analysis System<br/>
+        Patient: {paciente.nome} | ID: {paciente.id} | Generated on: {datetime.now().strftime('%m/%d/%Y %H:%M')}<br/><br/>
         </i>
         """
         story.append(Paragraph(footer_text, small_style))
@@ -467,7 +460,7 @@ def generate_report_for_patient(db: Session, paciente_id: int) -> str:
     os.makedirs(reports_dir, exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"pre_laudo_{paciente_id}_{timestamp}.pdf"
+    filename = f"preliminary_report_{paciente_id}_{timestamp}.pdf"
     output_path = os.path.join(reports_dir, filename)
     
     create_pdf_report(db, paciente_id, output_path)
